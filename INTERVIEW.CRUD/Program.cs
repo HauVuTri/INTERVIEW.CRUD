@@ -15,11 +15,13 @@ var services = builder.Services;
 
 #region register servies
 services.Configure<DbConfig>(builder.Configuration.GetSection("DbSetting"));
+services.Configure<JwtSetting>(builder.Configuration.GetSection("JwtSetting"));
 // services.AddDbContext<BankingContext>(options =>{
 //     var connString = builder.Configuration.GetSection("DbSetting");
 //     options.UseSqlServer(connString);
 // });
-services.AddDbContext<BankingContext>(options=>{
+services.AddDbContext<BankingContext>(options =>
+{
     options.UseSqlServer(builder.Configuration.GetConnectionString("BankingDB"));
 });
 //add swagger Gen
@@ -33,16 +35,18 @@ services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = "yourissuer",
-        ValidAudience = "youraudience",
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("your_secret_key"))
+        ValidIssuer = builder.Configuration.GetSection("JwtSetting:Issuer").Value,
+        ValidAudience = builder.Configuration.GetSection("JwtSetting:Audience").Value,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration.GetSection("JwtSetting:Key").Value))
     };
 });
+
 
 //add authorization with role-based policy
 services.AddAuthorization(options =>
 {
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("ConsistDBA",policy => policy.RequireRole("DBA"));
 });
 
 #endregion
@@ -68,7 +72,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
-
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllerRoute(
